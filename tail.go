@@ -29,45 +29,54 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 		return
 	}
 
+	watches := t.config.Watches
 	triggerDB := namespace[:p]
 	triggerCollection := namespace[p+1:]
 	operationType := dataset["op"]
 
 	if command, ok := dataset["o"].(map[string]interface{}); ok {
 		triggerID, _ := command["_id"].(bson.ObjectId)
+		for _, w := range watches {
+			switch operationType {
+			case "i":
+				//insert only
+				if w.TargetCollection == namespace {
+					reference := GetValue(w.TriggerReference, command)
 
-		switch operationType {
-		case "i":
-			if namespace == "live.comment" {
-				author := GetValue("author", command)
+					id, okA := GetValue("$id", reference).(bson.ObjectId)
+					col, okB := GetValue("$ref", reference).(string)
+					db, okC := GetValue("$db", reference).(string)
+					if !okC {
+						db = triggerDB
+					}
 
-				id, okA := GetValue("$id", author).(bson.ObjectId)
-				col, okB := GetValue("$ref", author).(string)
-				db, okC := GetValue("$db", author).(string)
+					if okA && okB {
+						session := t.session.Copy()
 
-				if okA && okB && okC {
-					session := t.session.Copy()
+						user := map[string]interface{}{}
 
-					user := map[string]interface{}{}
+						collection := session.DB(db).C(col)
+						collection.FindId(id).One(&user)
 
-					collection := session.DB(db).C(col)
-					collection.FindId(id).One(&user)
+						username := GetValue("username", user)
 
-					username := GetValue("username", user)
-
-					collection = session.DB(triggerDB).C(triggerCollection)
-					collection.Update(bson.M{"_id": triggerID}, bson.M{"$set": bson.M{"redkeep.metadata.username": username}})
+						collection = session.DB(triggerDB).C(triggerCollection)
+						collection.Update(bson.M{"_id": triggerID}, bson.M{"$set": bson.M{w.TargetNormalizedField: username}})
+					}
 				}
+			case "u":
+			case "d":
+			case "c":
+				//system commands. We do not care.
+			default:
+				log.Printf("unsupported operation %s.\n", operationType)
+				return
 			}
-
-		case "u":
-		case "d":
-		case "c":
-			//system commands. We do not care.
-		default:
-			log.Printf("unsupported operation %s.\n", operationType)
-			return
+			if w.TrackCollection == namespace {
+				// updating stuff
+			}
 		}
+
 	}
 }
 
@@ -94,17 +103,21 @@ func GetValue(from string, ds interface{}) interface{} {
 
 //Tail will start an inifite look that tails the oplog
 //as long as the channel does not get any input
-func (t TailAgent) Tail(quit chan bool) error {
+//forceRescan (Default false) will update anything from the lowest oplog timestamp
+//again. Can cause many redundant writes depending on your oplog size.
+func (t TailAgent) Tail(quit chan bool, forceRescan bool) error {
 	session := t.session.Copy()
 	defer session.Close()
 
 	oplogCollection := session.DB("local").C("oplog.rs")
 
 	startTime := bson.MongoTimestamp(time.Now().Unix())
+	if forceRescan {
+		startTime = bson.MongoTimestamp(0)
+	}
 
-	iter := oplogCollection.Find(
-		bson.M{"ts": bson.M{"$gt": bson.MongoTimestamp(startTime)}},
-	).LogReplay().Sort("$natural").Tail(requeryDuration)
+	query := oplogCollection.Find(bson.M{"ts": bson.M{"$gt": bson.MongoTimestamp(startTime)}})
+	iter := query.LogReplay().Sort("$natural").Tail(requeryDuration)
 
 	var lastTimestamp bson.MongoTimestamp
 	for {

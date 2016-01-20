@@ -7,7 +7,7 @@
       "trackCollection": "live.user",
       "trackFields": ["username"], 
       "targetCollection": "live.comment",
-      "targetNormalizedField": "normalizedUser",
+      "targetNormalizedField": "normalizedUsername",
       "triggerReference": "user",
       "behaviourSettings": {
         "cascadeDelete": false

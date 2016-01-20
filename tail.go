@@ -144,7 +144,7 @@ func (t TailAgent) Tail(quit chan bool) error {
 
 func (t *TailAgent) connect() error {
 	if !t.isConnected {
-		session, err := mgo.Dial(t.config.Mongo.ConnectionURL)
+		session, err := mgo.Dial(t.config.Mongo.ConnectionURI)
 
 		if err != nil {
 			log.Println(err)

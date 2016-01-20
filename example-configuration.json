@@ -1,0 +1,17 @@
+{
+  "mongo": { 
+    "connectionURI": "localhost:30000,localhost:30001,localhost:30002"
+  }, 
+  "watches": [ 
+    {
+      "trackCollection": "live.user",
+      "trackFields": ["username"], 
+      "targetCollection": "live.comment",
+      "targetNormalizedField": "normalizedUser",
+      "triggerReference": "user",
+      "behaviourSettings": {
+        "cascadeDelete": false
+      }
+    }
+  ]
+}

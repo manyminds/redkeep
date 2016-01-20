@@ -49,10 +49,10 @@ var _ = Describe("Tail", func() {
 	})
 
 	Context("Test basic connectivity", func() {
-		It("should connect to master", func() {
+		PIt("should connect to master", func() {
 			config := Configuration{
 				Mongo: Mongo{
-					ConnectionURL: "localhost:30002,localhost:30001,localhost:30000",
+					ConnectionURI: "localhost:30002,localhost:30001,localhost:30000",
 				},
 			}
 			running := make(chan bool)

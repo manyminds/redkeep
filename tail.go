@@ -50,6 +50,17 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 					handleInsert(w, t.session, command, triggerRef)
 				}
 			case "u":
+				if w.TrackCollection == namespace {
+					if selector, ok := dataset["o2"].(map[string]interface{}); ok {
+						if _, ok := command["$set"]; ok {
+							handleUpdate(w, t.session, command, selector)
+						} else if _, ok := command["$unset"]; ok {
+							log.Println("-- Unset is not yet implemented.")
+						} else {
+							log.Printf("New Command occured! %#v\n", command)
+						}
+					}
+				}
 			case "d":
 			case "c":
 				//system commands. We do not care.
@@ -101,6 +112,64 @@ func handleInsert(
 		collection = session.DB(originRef.Database).C(originRef.Collection)
 		collection.Update(bson.M{"_id": originRef.Id}, bson.M{"$set": normalizingFields})
 	}
+}
+
+func handleUpdate(
+	w Watch,
+	s *mgo.Session,
+	command map[string]interface{},
+	selector map[string]interface{},
+) {
+	// update all w.TrackFields (that are in command)
+	// in w.TargetCollection
+	// WHERE w.TriggerReference
+	//
+	//selector
+	session := s.Copy()
+	defer session.Close()
+	p := strings.Index(w.TargetCollection, ".")
+	targetDB := w.TargetCollection[:p]
+	targetCollection := w.TargetCollection[p+1:]
+	collection := session.DB(targetDB).C(targetCollection)
+
+	normalizingFields := bson.M{}
+	for _, field := range w.TrackFields {
+		value := GetValue("$set."+field, command)
+		if value != nil {
+			normalizingFields[w.TargetNormalizedField+"."+field] = value
+		}
+	}
+
+	refID, ok := selector["_id"]
+	if !ok {
+		log.Println("No id found.")
+		return
+	}
+
+	err := collection.Update(bson.M{w.TriggerReference + ".$id": refID}, bson.M{"$set": normalizingFields})
+	if err != nil {
+		log.Printf("Could not update: %s\n", err.Error())
+		log.Printf("Query: %#v\n", command)
+	}
+}
+
+//HasKey will return wether the key was found or not
+func HasKey(key string, ds interface{}) bool {
+	data, ok := ds.(map[string]interface{})
+	if !ok {
+		return false
+	}
+
+	if index := strings.Index(key, "."); index != -1 {
+		return HasKey(key[index+1:], data[key[:index]])
+	}
+
+	if _, ok := data[key]; ok {
+		log.Printf("Key found: [%s]\n", key)
+		return true
+	}
+
+	return false
 }
 
 //GetValue works like this:

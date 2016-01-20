@@ -43,20 +43,15 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 				if w.TargetCollection == namespace {
 					reference := GetValue(w.TriggerReference, command)
 
-					id, okA := GetValue("$id", reference).(bson.ObjectId)
-					col, okB := GetValue("$ref", reference).(string)
-					db, okC := GetValue("$db", reference).(string)
-					if !okC {
-						db = triggerDB
-					}
+					ref, ok := getReference(reference, triggerDB)
 
-					if okA && okB {
+					if ok {
 						session := t.session.Copy()
 
 						user := map[string]interface{}{}
 
-						collection := session.DB(db).C(col)
-						collection.FindId(id).One(&user)
+						collection := session.DB(ref.Database).C(ref.Collection)
+						collection.FindId(ref.Id).One(&user)
 
 						username := GetValue("username", user)
 
@@ -99,6 +94,22 @@ func GetValue(from string, ds interface{}) interface{} {
 	}
 
 	return data[from]
+}
+
+//getReference tries to create a reference from target
+//returns true if valid, false otherwise
+func getReference(target interface{}, originalDatabase string) (mgo.DBRef, bool) {
+	id, okID := GetValue("$id", target).(bson.ObjectId)
+	col, okRef := GetValue("$ref", target).(string)
+
+	//database in references is an optional value
+	db, okDb := GetValue("$db", target).(string)
+
+	if !okDb {
+		db = originalDatabase
+	}
+
+	return mgo.DBRef{Collection: col, Id: id, Database: db}, okID && okRef
 }
 
 //Tail will start an inifite look that tails the oplog

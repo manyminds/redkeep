@@ -120,11 +120,6 @@ func handleUpdate(
 	command map[string]interface{},
 	selector map[string]interface{},
 ) {
-	// update all w.TrackFields (that are in command)
-	// in w.TargetCollection
-	// WHERE w.TriggerReference
-	//
-	//selector
 	session := s.Copy()
 	defer session.Close()
 	p := strings.Index(w.TargetCollection, ".")
@@ -135,7 +130,7 @@ func handleUpdate(
 	normalizingFields := bson.M{}
 	for _, field := range w.TrackFields {
 		value := GetValue("$set."+field, command)
-		if value != nil {
+		if HasKey("$set."+field, command) {
 			normalizingFields[w.TargetNormalizedField+"."+field] = value
 		}
 	}
@@ -165,7 +160,6 @@ func HasKey(key string, ds interface{}) bool {
 	}
 
 	if _, ok := data[key]; ok {
-		log.Printf("Key found: [%s]\n", key)
 		return true
 	}
 

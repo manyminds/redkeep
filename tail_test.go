@@ -14,7 +14,32 @@ import (
 )
 
 var _ = Describe("Tail", func() {
-	Context("Test getValue", func() {
+	Context("Test HasKey", func() {
+		It("validate functionality", func() {
+			toTest := map[string]interface{}{
+				"fish": map[string]interface{}{
+					"dog": "cat",
+				},
+				"tree": nil,
+				"yellow": map[string]interface{}{
+					"red": nil,
+				},
+			}
+			actual := HasKey("blub", toTest)
+			Expect(actual).To(Equal(false))
+
+			actual = HasKey("fish.dog", toTest)
+			Expect(actual).To(Equal(true))
+
+			actual = HasKey("yellow.red", toTest)
+			Expect(actual).To(Equal(true))
+
+			actual = HasKey("tree", toTest)
+			Expect(actual).To(Equal(true))
+		})
+	})
+
+	Context("test GetValue", func() {
 		It("will find the first value", func() {
 			testReference := mgo.DBRef{
 				Collection: "diff",

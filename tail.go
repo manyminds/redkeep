@@ -14,9 +14,8 @@ const requeryDuration = 2 * time.Second
 
 //TailAgent the worker that tails the database
 type TailAgent struct {
-	isConnected bool
-	config      Configuration
-	session     *mgo.Session
+	config  Configuration
+	session *mgo.Session
 }
 
 func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
@@ -32,7 +31,6 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 
 	triggerDB := namespace[:p]
 	triggerCollection := namespace[p+1:]
-
 	operationType := dataset["op"]
 
 	if command, ok := dataset["o"].(map[string]interface{}); ok {
@@ -49,7 +47,6 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 
 				if okA && okB && okC {
 					session := t.session.Copy()
-					session.SetMode(mgo.Strong, true)
 
 					user := map[string]interface{}{}
 
@@ -143,17 +140,15 @@ func (t TailAgent) Tail(quit chan bool) error {
 }
 
 func (t *TailAgent) connect() error {
-	if !t.isConnected {
-		session, err := mgo.Dial(t.config.Mongo.ConnectionURI)
+	session, err := mgo.Dial(t.config.Mongo.ConnectionURI)
 
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-
-		session.SetMode(mgo.Monotonic, true)
-		t.session = session
+	if err != nil {
+		log.Println(err)
+		return err
 	}
+
+	session.SetMode(mgo.Strong, true)
+	t.session = session
 
 	return nil
 }

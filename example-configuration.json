@@ -5,9 +5,9 @@
   "watches": [ 
     {
       "trackCollection": "live.user",
-      "trackFields": ["username"], 
+      "trackFields": ["username", "gender"], 
       "targetCollection": "live.comment",
-      "targetNormalizedField": "normalizedUsername",
+      "targetNormalizedField": "normalizedValues",
       "triggerReference": "user",
       "behaviourSettings": {
         "cascadeDelete": false

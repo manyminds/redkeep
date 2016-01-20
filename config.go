@@ -26,7 +26,7 @@ type Mongo struct {
 //Watch defines one watch that redkeep will do for you
 type Watch struct {
 	TrackCollection       string            `json:"trackCollection" validate:"required,gt=0"`
-	TrackFields           []string          `json:"trackFields" validate:"required,eq=1,dive,min=1"`
+	TrackFields           []string          `json:"trackFields" validate:"required,min=1,dive,min=1"`
 	TargetCollection      string            `json:"targetCollection" validate:"required,min=1"`
 	TargetNormalizedField string            `json:"targetNormalizedField" validate:"required,min=1"`
 	TriggerReference      string            `json:"triggerReference" validate:"required,min=1"`

@@ -50,7 +50,7 @@ var _ = Describe("Tail", func() {
 	})
 
 	Context("Test basic connectivity", func() {
-		It("should connect to master", func() {
+		PIt("should connect to master", func() {
 			file, err := ioutil.ReadFile("./example-configuration.json")
 			Expect(err).ToNot(HaveOccurred())
 			config, err := NewConfiguration(file)
@@ -60,7 +60,7 @@ var _ = Describe("Tail", func() {
 			Expect(err).ToNot(HaveOccurred())
 			go agent.Tail(running, true)
 
-			time.Sleep(3 * time.Second)
+			time.Sleep(3000 * time.Second)
 			running <- false
 		})
 	})

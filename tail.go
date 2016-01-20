@@ -51,12 +51,19 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 						user := map[string]interface{}{}
 
 						collection := session.DB(ref.Database).C(ref.Collection)
-						collection.FindId(ref.Id).One(&user)
+						err := collection.FindId(ref.Id).One(&user)
 
-						username := GetValue("username", user)
+						if err != nil {
+							continue
+						}
+
+						normalizingFields := bson.M{}
+						for i, s := range w.TrackFields {
+							normalizingFields[w.TargetNormalizedField+"."+s] = GetValue(w.TrackFields[i], user)
+						}
 
 						collection = session.DB(triggerDB).C(triggerCollection)
-						collection.Update(bson.M{"_id": triggerID}, bson.M{"$set": bson.M{w.TargetNormalizedField: username}})
+						collection.Update(bson.M{"_id": triggerID}, bson.M{"$set": normalizingFields})
 					}
 				}
 			case "u":
@@ -71,7 +78,6 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 				// updating stuff
 			}
 		}
-
 	}
 }
 

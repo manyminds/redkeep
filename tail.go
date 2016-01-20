@@ -36,35 +36,18 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 
 	if command, ok := dataset["o"].(map[string]interface{}); ok {
 		triggerID, _ := command["_id"].(bson.ObjectId)
+		triggerRef := mgo.DBRef{
+			Database:   triggerDB,
+			Id:         triggerID,
+			Collection: triggerCollection,
+		}
+
 		for _, w := range watches {
 			switch operationType {
 			case "i":
 				//insert only
 				if w.TargetCollection == namespace {
-					reference := GetValue(w.TriggerReference, command)
-
-					ref, ok := getReference(reference, triggerDB)
-
-					if ok {
-						session := t.session.Copy()
-
-						user := map[string]interface{}{}
-
-						collection := session.DB(ref.Database).C(ref.Collection)
-						err := collection.FindId(ref.Id).One(&user)
-
-						if err != nil {
-							continue
-						}
-
-						normalizingFields := bson.M{}
-						for i, s := range w.TrackFields {
-							normalizingFields[w.TargetNormalizedField+"."+s] = GetValue(w.TrackFields[i], user)
-						}
-
-						collection = session.DB(triggerDB).C(triggerCollection)
-						collection.Update(bson.M{"_id": triggerID}, bson.M{"$set": normalizingFields})
-					}
+					handleInsert(w, t.session, command, triggerRef)
 				}
 			case "u":
 			case "d":
@@ -78,6 +61,45 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 				// updating stuff
 			}
 		}
+	}
+}
+
+//handleInsert handles the situation that an entry gets inserted that uses
+//a reference we are denormalizing
+func handleInsert(
+	w Watch,
+	session *mgo.Session,
+	command interface{},
+	originRef mgo.DBRef,
+) {
+	reference := GetValue(w.TriggerReference, command)
+
+	if reference == nil {
+		return
+	}
+
+	ref, ok := getReference(reference, originRef.Database)
+
+	if ok {
+		session := session.Copy()
+		defer session.Close()
+
+		user := map[string]interface{}{}
+
+		collection := session.DB(ref.Database).C(ref.Collection)
+		err := collection.FindId(ref.Id).One(&user)
+
+		if err != nil {
+			return
+		}
+
+		normalizingFields := bson.M{}
+		for i, s := range w.TrackFields {
+			normalizingFields[w.TargetNormalizedField+"."+s] = GetValue(w.TrackFields[i], user)
+		}
+
+		collection = session.DB(originRef.Database).C(originRef.Collection)
+		collection.Update(bson.M{"_id": originRef.Id}, bson.M{"$set": normalizingFields})
 	}
 }
 

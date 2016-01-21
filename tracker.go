@@ -16,6 +16,18 @@ type Tracker interface {
 		selector map[string]interface{},
 	)
 
+	HandleUnsetUpdate(
+		w Watch,
+		command map[string]interface{},
+		selector map[string]interface{},
+	)
+
+	HandleRemove(
+		w Watch,
+		command map[string]interface{},
+		selector map[string]interface{},
+	)
+
 	HandleInsert(
 		w Watch,
 		command map[string]interface{},
@@ -39,6 +51,10 @@ func (c changeTracker) HandleSetUpdate(w Watch, command map[string]interface{}, 
 	for _, field := range w.TrackFields {
 		value := GetValue("$set."+field, command)
 		if HasKey("$set."+field, command) {
+			if value == nil {
+				value = "null"
+			}
+
 			normalizingFields[w.TargetNormalizedField+"."+field] = value
 		}
 	}
@@ -55,6 +71,14 @@ func (c changeTracker) HandleSetUpdate(w Watch, command map[string]interface{}, 
 		log.Printf("Query: %#v\n", command)
 	}
 
+}
+
+func (c changeTracker) HandleRemove(w Watch, command map[string]interface{}, selector map[string]interface{}) {
+	log.Println("-- Remove is not yet implemented")
+}
+
+func (c changeTracker) HandleUnsetUpdate(w Watch, command map[string]interface{}, selector map[string]interface{}) {
+	log.Println("-- Unset is not yet implemented")
 }
 
 func (c changeTracker) HandleInsert(w Watch, command map[string]interface{}, originRef mgo.DBRef) {

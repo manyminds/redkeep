@@ -62,6 +62,11 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 					}
 				}
 			case "d":
+				if w.TrackCollection == namespace {
+					if selector, ok := dataset["o2"].(map[string]interface{}); ok {
+						t.tracker.HandleRemove(w, command, selector)
+					}
+				}
 			case "c":
 				//system commands. We do not care.
 			default:
@@ -101,9 +106,9 @@ func (t TailAgent) Tail(quit chan bool, forceRescan bool) error {
 
 	oplogCollection := session.DB("local").C("oplog.rs")
 
-	startTime := bson.MongoTimestamp(time.Now().Unix())
+	startTime := time.Now().Unix()
 	if forceRescan {
-		startTime = bson.MongoTimestamp(0)
+		startTime = 0
 	}
 
 	query := oplogCollection.Find(bson.M{"ts": bson.M{"$gt": bson.MongoTimestamp(startTime)}})

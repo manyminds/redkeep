@@ -1,9 +1,6 @@
 package redkeep_test
 
 import (
-	"io/ioutil"
-	"time"
-
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
@@ -71,22 +68,6 @@ var _ = Describe("Tail", func() {
 
 			actual = GetValue("fish", toTest)
 			Expect(actual).To(Equal(map[string]interface{}{"dog": "cat"}))
-		})
-	})
-
-	Context("Test basic connectivity", func() {
-		PIt("should connect to master", func() {
-			file, err := ioutil.ReadFile("./example-configuration.json")
-			Expect(err).ToNot(HaveOccurred())
-			config, err := NewConfiguration(file)
-			Expect(err).ToNot(HaveOccurred())
-			running := make(chan bool)
-			agent, err := NewTailAgent(*config)
-			Expect(err).ToNot(HaveOccurred())
-			go agent.Tail(running, true)
-
-			time.Sleep(3000 * time.Second)
-			running <- false
 		})
 	})
 })

@@ -65,7 +65,7 @@ func (c changeTracker) HandleSetUpdate(w Watch, command map[string]interface{}, 
 		return
 	}
 
-	err := collection.Update(bson.M{w.TriggerReference + ".$id": refID}, bson.M{"$set": normalizingFields})
+	_, err := collection.UpdateAll(bson.M{w.TriggerReference + ".$id": refID}, bson.M{"$set": normalizingFields})
 	if err != nil {
 		log.Printf("Could not update: %s\n", err.Error())
 		log.Printf("Query: %#v\n", command)

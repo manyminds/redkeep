@@ -14,6 +14,7 @@ services:
 # make mongodb a replica set
 before_script:
   - echo "replSet = myReplSetName" | sudo tee -a /etc/mongodb.conf
+  - echo "   port: 30000" | sudo tee -a /etc/mongodb.conf
   - sudo service mongodb restart
   - sleep 20
   - mongo --eval 'rs.initiate()'

@@ -10,7 +10,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const requeryDuration = 2 * time.Second
+const requeryDuration = 1 * time.Second
 
 //TailAgent the worker that tails the database
 type TailAgent struct {

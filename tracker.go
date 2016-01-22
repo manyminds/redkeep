@@ -34,10 +34,6 @@ type changeTracker struct {
 }
 
 func (c changeTracker) HandleUpdate(w Watch, command map[string]interface{}, selector map[string]interface{}) {
-	if _, ok := command["$set"]; !ok {
-		log.Println("Only set is implemented at the moment")
-		return
-	}
 	session := c.session.Copy()
 	defer session.Close()
 	p := strings.Index(w.TargetCollection, ".")

@@ -57,11 +57,13 @@ func (c changeTracker) HandleUpdate(w Watch, command map[string]interface{}, sel
 		return
 	}
 
-	_, err := collection.UpdateAll(bson.M{w.TriggerReference + ".$id": refID}, updateQuery)
+	selectQuery := bson.M{w.TriggerReference + ".$id": refID}
+	_, err := collection.UpdateAll(selectQuery, updateQuery)
 	if err != nil {
-		log.Printf("Could not update: %s using query %#v\n", err.Error(), updateQuery)
-		log.Printf("Query: %#v\n", command)
+		log.Println("Query could not be executed successfully.")
 	}
+
+	log.Println("Executing Query: ", bson.M{w.TriggerReference + ".$id": refID}, updateQuery)
 }
 
 func (c changeTracker) HandleRemove(w Watch, command map[string]interface{}, selector map[string]interface{}) {

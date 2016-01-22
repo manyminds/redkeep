@@ -15,6 +15,16 @@
     },
     {
       "trackCollection": "live.user",
+      "trackFields": ["loginCount"], 
+      "targetCollection": "live.comment",
+      "targetNormalizedField": "statistics",
+      "triggerReference": "user",
+      "behaviourSettings": {
+        "cascadeDelete": false
+      }
+    },
+    {
+      "trackCollection": "live.user",
       "trackFields": ["name", "username"], 
       "targetCollection": "live.answer",
       "targetNormalizedField": "meta",

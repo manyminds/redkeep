@@ -32,8 +32,12 @@ func BuildUpdateQuery(w Watch, command map[string]interface{}) bson.M {
 			}
 		}
 
+		if len(normalizingFields) == 0 {
+			return nil
+		}
+
 		return bson.M{queryType: normalizingFields}
 	}
 
-	return bson.M{}
+	return nil
 }

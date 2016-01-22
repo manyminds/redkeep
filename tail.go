@@ -146,7 +146,6 @@ func (t *TailAgent) connect() error {
 	session, err := mgo.Dial(t.config.Mongo.ConnectionURI)
 
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 

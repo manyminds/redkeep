@@ -17,7 +17,7 @@ var _ = Describe("Querybuilder tests", func() {
 
 		BeforeEach(func() {
 			w = Watch{
-				TrackFields:           []string{"username", "name"},
+				TrackFields:           []string{"username", "name", "oauth.userdata"},
 				TargetNormalizedField: "norm",
 			}
 		})
@@ -46,6 +46,27 @@ var _ = Describe("Querybuilder tests", func() {
 			actual := BuildUpdateQuery(w, command)
 			Expect(actual).To(Equal(expected))
 		})
+		/*
+		 *
+		 *    It("whitelist only subset", func() {
+		 *      command := map[string]interface{}{
+		 *        "$set": map[string]interface{}{
+		 *          "oauth": map[string]interface{}{
+		 *            "userdata": map[string]interface{}{
+		 *              "name": map[string]interface{}{
+		 *                "firstName": "Naan",
+		 *                "lastName":  "Waana",
+		 *              },
+		 *            },
+		 *          },
+		 *        },
+		 *      }
+		 *
+		 *      expected := bson.M{"$set": bson.M{"norm.name": map[string]interface{}{"firstName": "nino"}}}
+		 *      actual := BuildUpdateQuery(w, command)
+		 *      Expect(actual).To(Equal(expected))
+		 *    })
+		 */
 
 		It("will generate nested updates correctly", func() {
 			command := map[string]interface{}{

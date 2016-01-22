@@ -1,0 +1,27 @@
+{
+  "mongo": { 
+    "connectionURI": "localhost:27017"
+  }, 
+  "watches": [ 
+    {
+      "trackCollection": "live.user",
+      "trackFields": ["username", "gender"], 
+      "targetCollection": "live.comment",
+      "targetNormalizedField": "meta",
+      "triggerReference": "user",
+      "behaviourSettings": {
+        "cascadeDelete": false
+      }
+    },
+    {
+      "trackCollection": "live.user",
+      "trackFields": ["name", "username"], 
+      "targetCollection": "live.answer",
+      "targetNormalizedField": "meta",
+      "triggerReference": "user",
+      "behaviourSettings": {
+        "cascadeDelete": false
+      }
+    }
+  ]
+}

@@ -49,7 +49,13 @@ var _ = Describe("Tail", func() {
 			actual := HasKey("blub", toTest)
 			Expect(actual).To(Equal(false))
 
+			actual = HasKey("fish", toTest)
+			Expect(actual).To(Equal(true))
+
 			actual = HasKey("fish.dog", toTest)
+			Expect(actual).To(Equal(true))
+
+			actual = HasKey("yellow", toTest)
 			Expect(actual).To(Equal(true))
 
 			actual = HasKey("yellow.red", toTest)

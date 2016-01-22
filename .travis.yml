@@ -13,12 +13,11 @@ services:
   - mongodb
 # make mongodb a replica set
 before_script:
-  - echo "replSet = myReplSetName" | sudo tee -a /etc/mongodb.conf
-  - echo "   port: 30000" | sudo tee -a /etc/mongodb.conf
+  - echo "replSet = testRs" | sudo tee -a /etc/mongodb.conf
   - sudo service mongodb restart
   - sleep 20
   - mongo --eval 'rs.initiate()'
   - sleep 15
 
 script: 
-  - ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --trace --race --progress
+  - TEST_CONFIGURATION=travis-configuration.json ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --trace --race --progress

@@ -52,13 +52,7 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 			case "u":
 				if w.TrackCollection == namespace {
 					if selector, ok := dataset["o2"].(map[string]interface{}); ok {
-						if _, ok := command["$set"]; ok {
-							t.tracker.HandleSetUpdate(w, command, selector)
-						} else if _, ok := command["$unset"]; ok {
-							log.Println("-- Unset is not yet implemented.")
-						} else {
-							log.Printf("New Command occured! %#v\n", command)
-						}
+						t.tracker.HandleUpdate(w, command, selector)
 					}
 				}
 			case "d":

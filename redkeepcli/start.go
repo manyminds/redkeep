@@ -1,15 +1,23 @@
 package main
 
 import (
+	"flag"
 	"io/ioutil"
 	"log"
-	"time"
 
 	"github.com/manyminds/redkeep"
 )
 
 func main() {
-	file, err := ioutil.ReadFile("example-configuration.json")
+	configurationFilepath := flag.String("config", "configuration.json", "path to the configuration file")
+	rescan := flag.Bool("rescan", false, "shall we start from the oplog beginnging?")
+	flag.Parse()
+
+	if configurationFilepath == nil {
+		return
+	}
+
+	file, err := ioutil.ReadFile(*configurationFilepath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -22,8 +30,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	go agent.Tail(running, false)
 
-	time.Sleep(3000 * time.Second)
+	agent.Tail(running, *rescan)
 	running <- false
 }

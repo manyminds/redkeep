@@ -1,21 +1,39 @@
 package redkeep
 
-import "gopkg.in/mgo.v2/bson"
+import (
+	"strings"
 
-//TODO this logic is buggy with nested updates
-//on a $set.name.firstName it won't trigger
-func buildUpdateQuery(w Watch, command map[string]interface{}) bson.M {
-	normalizingFields := bson.M{}
-	for _, field := range w.TrackFields {
-		value := GetValue("$set."+field, command)
-		if HasKey("$set."+field, command) {
-			if value == nil {
-				value = "null"
-			}
+	"gopkg.in/mgo.v2/bson"
+)
 
-			normalizingFields[w.TargetNormalizedField+"."+field] = value
+func checkKey(hackstack []string, field string) bool {
+	for _, b := range hackstack {
+		if b == field {
+			return true
+		}
+
+		if strings.HasPrefix(field, b+".") {
+			return true
 		}
 	}
 
-	return bson.M{"$set": normalizingFields}
+	return false
+}
+
+//BuildUpdateQuery generates the query
+func BuildUpdateQuery(w Watch, command map[string]interface{}) bson.M {
+	normalizingFields := bson.M{}
+	for queryType, query := range command {
+		if mappedQuery, ok := query.(map[string]interface{}); ok {
+			for key, value := range mappedQuery {
+				if checkKey(w.TrackFields, key) {
+					normalizingFields[w.TargetNormalizedField+"."+key] = value
+				}
+			}
+		}
+
+		return bson.M{queryType: normalizingFields}
+	}
+
+	return bson.M{}
 }

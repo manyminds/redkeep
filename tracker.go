@@ -51,7 +51,7 @@ func (c changeTracker) HandleUpdate(w Watch, command map[string]interface{}, sel
 		return
 	}
 
-	updateQuery := buildUpdateQuery(w, command)
+	updateQuery := BuildUpdateQuery(w, command)
 	_, err := collection.UpdateAll(bson.M{w.TriggerReference + ".$id": refID}, updateQuery)
 	if err != nil {
 		log.Printf("Could not update: %s using query %#v\n", err.Error(), updateQuery)

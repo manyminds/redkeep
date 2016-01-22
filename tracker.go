@@ -51,30 +51,12 @@ func (c changeTracker) HandleUpdate(w Watch, command map[string]interface{}, sel
 		return
 	}
 
-	updateQuery := buildUpdateQuery(w.TrackFields, w.TargetNormalizedField, command)
+	updateQuery := buildUpdateQuery(w, command)
 	_, err := collection.UpdateAll(bson.M{w.TriggerReference + ".$id": refID}, updateQuery)
 	if err != nil {
 		log.Printf("Could not update: %s using query %#v\n", err.Error(), updateQuery)
 		log.Printf("Query: %#v\n", command)
 	}
-}
-
-//TODO this logic is buggy with nested updates
-//on a $set.name.firstName it won't trigger
-func buildUpdateQuery(trackFields []string, normalizedField string, command map[string]interface{}) bson.M {
-	normalizingFields := bson.M{}
-	for _, field := range trackFields {
-		value := GetValue("$set."+field, command)
-		if HasKey("$set."+field, command) {
-			if value == nil {
-				value = "null"
-			}
-
-			normalizingFields[normalizedField+"."+field] = value
-		}
-	}
-
-	return bson.M{"$set": normalizingFields}
 }
 
 func (c changeTracker) HandleRemove(w Watch, command map[string]interface{}, selector map[string]interface{}) {

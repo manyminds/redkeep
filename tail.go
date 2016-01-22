@@ -142,6 +142,7 @@ func (t TailAgent) Tail(quit chan bool, forceRescan bool) error {
 }
 
 func (t *TailAgent) connect() error {
+	log.Println("Connecting to", t.config.Mongo.ConnectionURI)
 	session, err := mgo.Dial(t.config.Mongo.ConnectionURI)
 
 	if err != nil {

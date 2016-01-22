@@ -19,7 +19,7 @@ var _ = Describe("Tail", func() {
 	)
 
 	BeforeSuite(func() {
-		file, err := ioutil.ReadFile("example-configuration.json")
+		file, err := ioutil.ReadFile(testConfiguration)
 		Expect(err).ToNot(HaveOccurred())
 		config, err := NewConfiguration(file)
 		Expect(err).ToNot(HaveOccurred())

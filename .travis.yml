@@ -13,9 +13,12 @@ services:
   - mongodb
 # make mongodb a replica set
 before_script:
-  - echo "replSet = testRs" | sudo tee -a /etc/mongodb.conf
-  - sudo service mongodb restart
-  - sleep 20
+  - echo "replSet=testRs" | sudo tee -a /etc/mongodb.conf
+  - echo "oplogSize = 250" | sudo tee -a /etc/mongodb.conf
+  - echo "nojournal = true" | sudo tee -a /etc/mongodb.conf
+  - sudo rm -rf /var/lib/mongodb/*
+  - sudo service mongodb start || { cat /var/log/mongodb/mongodb.log; exit 1; }
+  - bash -c "while true; do mongo --quiet --port 27017 --eval 'if (!db.stats().ok) { quit(1) }' || { sleep 2; continue; } && break; done;"
   - mongo --eval 'rs.initiate()'
   - sleep 15
 

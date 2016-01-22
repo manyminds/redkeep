@@ -1,6 +1,6 @@
 {
   "mongo": { 
-    "connectionURI": "localhost:27017"
+    "connectionURI": "127.0.0.1"
   }, 
   "watches": [ 
     {

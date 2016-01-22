@@ -5,7 +5,7 @@
   "watches": [ 
     {
       "trackCollection": "live.user",
-      "trackFields": ["username", "gender"], 
+      "trackFields": ["username", "gender", "invalid"], 
       "targetCollection": "live.comment",
       "targetNormalizedField": "meta",
       "triggerReference": "user",

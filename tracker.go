@@ -79,28 +79,35 @@ func (c changeTracker) HandleInsert(w Watch, command map[string]interface{}, ori
 
 	ref, ok := getReference(reference, originRef.Database)
 
-	if ok {
-		session := c.session.Copy()
-		defer session.Close()
-
-		user := map[string]interface{}{}
-
-		collection := session.DB(ref.Database).C(ref.Collection)
-		err := collection.FindId(ref.Id).One(&user)
-
-		if err != nil {
-			return
-		}
-
-		normalizingFields := bson.M{}
-		for i, s := range w.TrackFields {
-			normalizingFields[w.TargetNormalizedField+"."+s] = GetValue(w.TrackFields[i], user)
-		}
-
-		collection = session.DB(originRef.Database).C(originRef.Collection)
-		collection.Update(bson.M{"_id": originRef.Id}, bson.M{"$set": normalizingFields})
+	if !ok {
+		return
 	}
 
+	session := c.session.Copy()
+	defer session.Close()
+
+	user := map[string]interface{}{}
+
+	collection := session.DB(ref.Database).C(ref.Collection)
+	err := collection.FindId(ref.Id).One(&user)
+
+	if err != nil {
+		return
+	}
+
+	query := BuildInsertQuery(w, user)
+
+	if query == nil {
+		return
+	}
+
+	collection = session.DB(originRef.Database).C(originRef.Collection)
+	err = collection.Update(bson.M{"_id": originRef.Id}, query)
+	if err != nil {
+		log.Println("Query could not be executed successfully.")
+	}
+
+	log.Println("Executing Query: ", bson.M{"_id": originRef.Id}, query)
 }
 
 //NewChangeTracker is the default tracker implementation of redkeep

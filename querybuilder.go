@@ -20,6 +20,22 @@ func checkKey(hackstack []string, field string) bool {
 	return false
 }
 
+//BuildInsertQuery generates the query
+func BuildInsertQuery(w Watch, command map[string]interface{}) bson.M {
+	normalizingFields := bson.M{}
+	for key, value := range command {
+		if checkKey(w.TrackFields, key) {
+			normalizingFields[w.TargetNormalizedField+"."+key] = value
+		}
+	}
+
+	if len(normalizingFields) == 0 {
+		return nil
+	}
+
+	return bson.M{"$set": normalizingFields}
+}
+
 //BuildUpdateQuery generates the query
 func BuildUpdateQuery(w Watch, command map[string]interface{}) bson.M {
 	normalizingFields := bson.M{}

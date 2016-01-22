@@ -17,7 +17,7 @@ var _ = Describe("Querybuilder tests", func() {
 
 		BeforeEach(func() {
 			w = Watch{
-				TrackFields:           []string{"username", "name", "oauth.userdata"},
+				TrackFields:           []string{"username", "name", "invalid"},
 				TargetNormalizedField: "norm",
 			}
 		})

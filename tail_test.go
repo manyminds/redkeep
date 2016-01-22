@@ -1,9 +1,6 @@
 package redkeep_test
 
 import (
-	"io/ioutil"
-	"log"
-
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
@@ -14,27 +11,29 @@ import (
 )
 
 var _ = Describe("Tail", func() {
-	var (
-		running chan bool
-	)
-
-	BeforeSuite(func() {
-		file, err := ioutil.ReadFile(testConfiguration)
-		Expect(err).ToNot(HaveOccurred())
-		config, err := NewConfiguration(file)
-		Expect(err).ToNot(HaveOccurred())
-		agent, err := NewTailAgent(*config)
-		if err != nil {
-			log.Fatal(err)
-		}
-		running = make(chan bool)
-		go agent.Tail(running, false)
-	})
-
-	AfterSuite(func() {
-		running <- false
-	})
-
+	/*
+	 *  var (
+	 *    running chan bool
+	 *  )
+	 *
+	 *  BeforeSuite(func() {
+	 *    file, err := ioutil.ReadFile(testConfiguration)
+	 *    Expect(err).ToNot(HaveOccurred())
+	 *    config, err := NewConfiguration(file)
+	 *    Expect(err).ToNot(HaveOccurred())
+	 *    agent, err := NewTailAgent(*config)
+	 *    if err != nil {
+	 *      log.Fatal(err)
+	 *    }
+	 *    running = make(chan bool)
+	 *    go agent.Tail(running, false)
+	 *  })
+	 *
+	 *  AfterSuite(func() {
+	 *    running <- false
+	 *  })
+	 *
+	 */
 	Context("Test HasKey", func() {
 		It("validate functionality", func() {
 			toTest := map[string]interface{}{

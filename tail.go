@@ -138,7 +138,7 @@ func (t TailAgent) Tail(quit chan bool, forceRescan bool) error {
 
 	iter.Close()
 
-	return errors.New("Tailable has no more results")
+	return errors.New("Tailable cursor ended unexpectedly")
 }
 
 func (t *TailAgent) connect() error {

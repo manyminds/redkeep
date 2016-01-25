@@ -48,7 +48,6 @@ func (c changeTracker) HandleUpdate(w Watch, command map[string]interface{}, sel
 	}
 
 	updateQuery := BuildUpdateQuery(w, command)
-
 	if updateQuery == nil {
 		return
 	}
@@ -68,13 +67,11 @@ func (c changeTracker) HandleRemove(w Watch, command map[string]interface{}, sel
 
 func (c changeTracker) HandleInsert(w Watch, command map[string]interface{}, originRef mgo.DBRef) {
 	reference := GetValue(w.TriggerReference, command)
-
 	if reference == nil {
 		return
 	}
 
 	ref, ok := getReference(reference, originRef.Database)
-
 	if !ok {
 		return
 	}
@@ -92,7 +89,6 @@ func (c changeTracker) HandleInsert(w Watch, command map[string]interface{}, ori
 	}
 
 	query := BuildInsertQuery(w, user)
-
 	if query == nil {
 		return
 	}

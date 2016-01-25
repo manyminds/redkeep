@@ -22,21 +22,3 @@ func GetValue(from string, ds interface{}) interface{} {
 
 	return data[from]
 }
-
-//HasKey will return wether the key was found or not
-func HasKey(key string, ds interface{}) bool {
-	data, ok := ds.(map[string]interface{})
-	if !ok {
-		return false
-	}
-
-	if index := strings.Index(key, "."); index != -1 {
-		return HasKey(key[index+1:], data[key[:index]])
-	}
-
-	if _, ok := data[key]; ok {
-		return true
-	}
-
-	return false
-}

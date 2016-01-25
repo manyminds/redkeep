@@ -4,23 +4,24 @@ go:
   - 1.5
   - tip
 
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927
+  - echo "deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.2.list
+  - sudo apt-get update
+  - sudo apt-get install -y mongodb-org
+  - ulimit -a
+  - ulimit -c unlimited || true 
+  - make clean testenv
+
 install:
   - go get -t -d -v ./...
   - go get github.com/onsi/ginkgo/ginkgo
   - go get -u github.com/golang/lint/golint
 
-services:
-  - mongodb
-# make mongodb a replica set
 before_script:
-  - echo "replSet=testRs" | sudo tee -a /etc/mongodb.conf
-  - echo "oplogSize = 250" | sudo tee -a /etc/mongodb.conf
-  - echo "nojournal = true" | sudo tee -a /etc/mongodb.conf
-  - sudo rm -rf /var/lib/mongodb/*
-  - sudo service mongodb start || { cat /var/log/mongodb/mongodb.log; exit 1; }
-  - bash -c "while true; do mongo --quiet --port 27017 --eval 'if (!db.stats().ok) { quit(1) }' || { sleep 2; continue; } && break; done;"
-  - mongo --eval 'rs.initiate()'
+  - mongo --eval 'tojson(db.runCommand({buildInfo:1}))'
   - sleep 15
 
 script: 
-  - TEST_CONFIGURATION=travis-configuration.json ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --trace --race --progress
+  - TEST_CONFIGURATION=test-configuration.json ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --trace --race --progress

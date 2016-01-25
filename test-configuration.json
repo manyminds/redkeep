@@ -1,12 +1,12 @@
 {
   "mongo": { 
-    "connectionURI": "127.0.0.1"
+    "connectionURI": "localhost:30000,localhost:30001,localhost:30002"
   }, 
   "watches": [ 
     {
-      "trackCollection": "live.user",
+      "trackCollection": "testing.user",
       "trackFields": ["username", "gender"], 
-      "targetCollection": "live.comment",
+      "targetCollection": "testing.comment",
       "targetNormalizedField": "meta",
       "triggerReference": "user",
       "behaviourSettings": {
@@ -14,9 +14,9 @@
       }
     },
     {
-      "trackCollection": "live.user",
+      "trackCollection": "testing.user",
       "trackFields": ["name", "username"], 
-      "targetCollection": "live.answer",
+      "targetCollection": "testing.answer",
       "targetNormalizedField": "meta",
       "triggerReference": "user",
       "behaviourSettings": {

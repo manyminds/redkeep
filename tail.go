@@ -22,14 +22,17 @@ type TailAgent struct {
 	startTime time.Time
 }
 
-//ToMongoTimestamp utility to convert time.Time
-//TODO refactor to own type
-func ToMongoTimestamp(t time.Time) bson.MongoTimestamp {
+//mongoTimestamp has the capability to cast to a mongo timestamp
+type mongoTimestamp struct {
+	time.Time
+}
+
+//mongoTimestamp returns a valid mongoTimestamp
+func (m mongoTimestamp) MongoTimestamp() bson.MongoTimestamp {
 	var b [12]byte
-	binary.BigEndian.PutUint32(b[:4], uint32(t.Unix()))
 	var result uint64
-	buf := bytes.NewReader(b[:])
-	binary.Read(buf, binary.BigEndian, &result)
+	binary.BigEndian.PutUint32(b[:4], uint32(m.Unix()))
+	binary.Read(bytes.NewReader(b[:]), binary.BigEndian, &result)
 
 	return bson.MongoTimestamp(result)
 }
@@ -112,12 +115,12 @@ func (t TailAgent) Tail(quit chan bool, forceRescan bool) error {
 
 	oplogCollection := session.DB("local").C("oplog.rs")
 
-	startTime := ToMongoTimestamp(t.startTime)
+	startTime := mongoTimestamp{t.startTime}
 	if forceRescan {
-		startTime = 0
+		startTime = mongoTimestamp{time.Unix(0, 0)}
 	}
 
-	query := oplogCollection.Find(bson.M{"ts": bson.M{"$gt": bson.MongoTimestamp(startTime)}})
+	query := oplogCollection.Find(bson.M{"ts": bson.M{"$gt": startTime.MongoTimestamp()}})
 	iter := query.LogReplay().Sort("$natural").Tail(requeryDuration)
 
 	var lastTimestamp bson.MongoTimestamp

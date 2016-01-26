@@ -1,6 +1,8 @@
 package redkeep
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"log"
 	"strings"
@@ -14,9 +16,25 @@ const requeryDuration = 1 * time.Second
 
 //TailAgent the worker that tails the database
 type TailAgent struct {
-	config  Configuration
-	session *mgo.Session
-	tracker Tracker
+	config    Configuration
+	session   *mgo.Session
+	tracker   Tracker
+	startTime time.Time
+}
+
+//mongoTimestamp has the capability to cast to a mongo timestamp
+type mongoTimestamp struct {
+	time.Time
+}
+
+//mongoTimestamp returns a valid mongoTimestamp
+func (m mongoTimestamp) MongoTimestamp() bson.MongoTimestamp {
+	var b [12]byte
+	var result uint64
+	binary.BigEndian.PutUint32(b[:4], uint32(m.Unix()))
+	binary.Read(bytes.NewReader(b[:]), binary.BigEndian, &result)
+
+	return bson.MongoTimestamp(result)
 }
 
 func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
@@ -97,12 +115,12 @@ func (t TailAgent) Tail(quit chan bool, forceRescan bool) error {
 
 	oplogCollection := session.DB("local").C("oplog.rs")
 
-	startTime := time.Now().Unix() + 1
+	startTime := mongoTimestamp{t.startTime}
 	if forceRescan {
-		startTime = 0
+		startTime = mongoTimestamp{time.Unix(0, 0)}
 	}
 
-	query := oplogCollection.Find(bson.M{"ts": bson.M{"$gt": bson.MongoTimestamp(startTime)}})
+	query := oplogCollection.Find(bson.M{"ts": bson.M{"$gt": startTime.MongoTimestamp()}})
 	iter := query.LogReplay().Sort("$natural").Tail(requeryDuration)
 
 	var lastTimestamp bson.MongoTimestamp
@@ -153,9 +171,14 @@ func (t *TailAgent) connect() error {
 	return nil
 }
 
-//NewTailAgent will generate a new tail agent
-func NewTailAgent(c Configuration) (*TailAgent, error) {
-	agent := &TailAgent{config: c}
+//NewTailAgentWithStartDate will start
+func NewTailAgentWithStartDate(c Configuration, startTime time.Time) (*TailAgent, error) {
+	agent := &TailAgent{config: c, startTime: startTime}
 	err := agent.connect()
 	return agent, err
+}
+
+//NewTailAgent will generate a new tail agent
+func NewTailAgent(c Configuration) (*TailAgent, error) {
+	return NewTailAgentWithStartDate(c, time.Now())
 }

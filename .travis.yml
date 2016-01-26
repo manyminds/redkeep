@@ -24,4 +24,7 @@ before_script:
   - sleep 15
 
 script: 
-  - TEST_CONFIGURATION=test-configuration.json ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --trace --race --progress
+  - ginkgo -r --randomizeSuites --failOnPending --trace --race --progress
+
+notifications:
+  email: false

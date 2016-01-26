@@ -173,6 +173,8 @@ var _ = Describe("Tail", func() {
 			Expect(actual.Meta["username"]).To(Equal("anonym"))
 			Expect(actual.Meta["name"]).To(HaveKey("firstName"))
 			Expect(actual.Meta["name"]).To(HaveKey("lastName"))
+			Expect(actual.Meta["name"].(map[string]interface{})["firstName"]).To(Equal("Not"))
+			Expect(actual.Meta["name"].(map[string]interface{})["lastName"]).To(Equal("Known"))
 		})
 	})
 

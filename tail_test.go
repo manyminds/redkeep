@@ -307,7 +307,6 @@ var _ = Describe("Tail", func() {
 
 			time.Sleep(10 * time.Millisecond)
 			db.Copy().DB(database).C("comment").Find(bson.M{"text": "this is my first comment"}).One(&actualC)
-
 			Expect(actualC.Meta["username"]).To(Equal("ironman"))
 			Expect(actualC.Meta["gender"]).To(Equal("male"))
 		})
@@ -346,7 +345,6 @@ var _ = Describe("Tail", func() {
 
 			time.Sleep(10 * time.Millisecond)
 			db.Copy().DB(database).C("comment").Find(bson.M{"text": "this is my first comment"}).One(&actualC)
-
 			Expect(actualC.Meta["username"]).To(Equal("blackwidow"))
 			Expect(actualC.Meta["gender"]).To(Equal("female"))
 		})

@@ -18,13 +18,17 @@ install:
   - go get -t -d -v ./...
   - go get github.com/onsi/ginkgo/ginkgo
   - go get -u github.com/golang/lint/golint
+  - go get -u github.com/modocache/gover
+  - go get -u github.com/mattn/goveralls
 
 before_script:
   - mongo --eval 'tojson(db.runCommand({buildInfo:1}))'
   - sleep 15
 
 script: 
-  - ginkgo -r --randomizeSuites --failOnPending --trace --race --progress
+  - ginkgo -r -cover --randomizeSuites --failOnPending --trace --race --progress
+  - gover
+  - goveralls -coverprofile=gover.coverprofile -repotoken pHTNrf97AGyJ56AkQmnPisOvlnaS1rlBo
 
 notifications:
   email: false

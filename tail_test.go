@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"time"
 
 	"gopkg.in/mgo.v2"
@@ -48,30 +47,38 @@ var testConfigurationTemplate = `{
 
 var _ = Describe("Tail", func() {
 	var (
-		running  chan bool
-		database string
+		running      chan bool
+		database     string
+		answerString string
 	)
 
 	BeforeSuite(func() {
-		randomDB := func() string {
+		rndDB := func() string {
 			return fmt.Sprintf("redkeep_tests_%d", time.Now().UnixNano())
 		}()
+
+		database = rndDB
+
+		running = make(chan bool)
+		answerString = "this is my answer"
+
+		var data []byte
 		tmp, err := template.New("config").Parse(testConfigurationTemplate)
 		Expect(err).ToNot(HaveOccurred())
-		var data []byte
+
 		buffer := bytes.NewBuffer(data)
-		err = tmp.Execute(buffer, struct{ Database string }{Database: randomDB})
+		err = tmp.Execute(buffer, struct{ Database string }{Database: database})
 		Expect(err).ToNot(HaveOccurred())
+
 		data, err = ioutil.ReadAll(buffer)
 		Expect(err).ToNot(HaveOccurred())
+
 		config, err := NewConfiguration(data)
 		Expect(err).ToNot(HaveOccurred())
-		database = randomDB
+
 		agent, err := NewTailAgent(*config)
-		if err != nil {
-			log.Fatal(err)
-		}
-		running = make(chan bool)
+		Expect(err).ToNot(HaveOccurred())
+
 		go agent.Tail(running, false)
 	})
 
@@ -93,8 +100,10 @@ var _ = Describe("Tail", func() {
 		}
 
 		var (
-			db         *mgo.Session
-			userOneRef mgo.DBRef
+			db           *mgo.Session
+			userOneRef   mgo.DBRef
+			userTwoRef   mgo.DBRef
+			userThreeRef mgo.DBRef
 		)
 
 		BeforeEach(func() {
@@ -107,6 +116,50 @@ var _ = Describe("Tail", func() {
 				Id:         userID,
 				Collection: "user",
 			}
+			userIDTwo := bson.ObjectIdHex("56a87196ea3265eb5589c9c8")
+			userTwoRef = mgo.DBRef{
+				Database:   database,
+				Id:         userIDTwo,
+				Collection: "user",
+			}
+			userIDThree := bson.ObjectIdHex("56a87196ea3265eb5589c9dd")
+			userThreeRef = mgo.DBRef{
+				Database:   database,
+				Id:         userIDThree,
+				Collection: "user",
+			}
+		})
+
+		It("Should update nothing with invalid fields", func() {
+			userRef := mgo.DBRef{
+				Database:   database,
+				Id:         bson.NewObjectId(),
+				Collection: "user",
+			}
+			db.DB(database).C("user").Insert(
+				bson.M{
+					"_id":      userRef.Id,
+					"nickname": "captain america",
+					"contact": bson.M{
+						"firstName": "Steve",
+						"lastName":  "Rogers",
+					},
+				},
+			)
+
+			db.DB(database).C("comment").Insert(
+				bson.M{
+					"text": "i am captain of a warmonger",
+					"user": userRef.Id,
+				},
+			)
+
+			c := comment{}
+			time.Sleep(10 * time.Millisecond)
+			db.Copy().DB(database).C("comment").Find(bson.M{"text": "i am captain of a warmonger"}).One(&c)
+
+			Expect(c.Text).To(Equal("i am captain of a warmonger"))
+			Expect(c.Meta).To(BeEmpty())
 		})
 
 		It("Should update infos on insert correctly", func() {
@@ -131,18 +184,48 @@ var _ = Describe("Tail", func() {
 
 			actual := comment{}
 			time.Sleep(10 * time.Millisecond)
-			db.Copy().DB(database).C("comment").Find(bson.M{}).One(&actual)
+			db.Copy().DB(database).C("comment").Find(bson.M{"text": "this is my first comment"}).One(&actual)
 
 			Expect(actual.Meta["username"]).To(Equal("naan"))
 			Expect(actual.Meta["gender"]).To(Equal("male"))
 		})
 
+		It("Can handle user changes", func() {
+			db.DB(database).C("user").Insert(
+				bson.M{
+					"_id":      userThreeRef.Id,
+					"username": "songoku",
+					"gender":   "male",
+					"name": bson.M{
+						"firstName": "Songoku",
+						"lastName":  "Kakarotto",
+					},
+				},
+			)
+
+			db.DB(database).C("comment").UpdateAll(
+				bson.M{
+					"user.$id": userOneRef.Id,
+				},
+				bson.M{
+					"user": userThreeRef,
+				},
+			)
+
+			actual := comment{}
+			time.Sleep(10 * time.Millisecond)
+			db.Copy().DB(database).C("comment").Find(bson.M{"text": "this is my first comment"}).One(&actual)
+
+			Expect(actual.Meta["username"]).To(Equal("songoku"))
+			Expect(actual.Meta["gender"]).To(Equal("male"))
+		})
+
 		It("will also work with answers and different mapping", func() {
-			db.DB(database).C("answer").Insert(&answer{AnswerText: "this is my answer", User: userOneRef})
+			db.DB(database).C("answer").Insert(&answer{AnswerText: answerString, User: userOneRef})
 
 			actual := answer{}
 			time.Sleep(10 * time.Millisecond)
-			db.Copy().DB(database).C("answer").Find(bson.M{"answerText": "this is my answer"}).One(&actual)
+			db.Copy().DB(database).C("answer").Find(bson.M{"answerText": answerString}).One(&actual)
 
 			Expect(actual.Meta["username"]).To(Equal("naan"))
 			Expect(actual.Meta["name"]).To(Equal(map[string]interface{}{
@@ -168,13 +251,149 @@ var _ = Describe("Tail", func() {
 			Expect(err).ToNot(HaveOccurred())
 			time.Sleep(10 * time.Millisecond)
 			actual := answer{}
-			db.Copy().DB(database).C("answer").Find(bson.M{"answerText": "this is my answer"}).One(&actual)
+			db.Copy().DB(database).C("answer").Find(bson.M{"answerText": answerString}).One(&actual)
 
 			Expect(actual.Meta["username"]).To(Equal("anonym"))
 			Expect(actual.Meta["name"]).To(HaveKey("firstName"))
 			Expect(actual.Meta["name"]).To(HaveKey("lastName"))
 			Expect(actual.Meta["name"].(map[string]interface{})["firstName"]).To(Equal("Not"))
 			Expect(actual.Meta["name"].(map[string]interface{})["lastName"]).To(Equal("Known"))
+		})
+
+		It("will work with upsert id on the user as well", func() {
+			cl, err := db.DB(database).C("user").UpsertId(
+				userOneRef.Id,
+				bson.M{
+					"$set": bson.M{
+						"username": "ironman",
+						"gender":   "male",
+						"name": bson.M{
+							"firstName": "Tony",
+							"lastName":  "Stark",
+						},
+					},
+				},
+			)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cl.Updated).To(Equal(1))
+
+			time.Sleep(10 * time.Millisecond)
+			actual := answer{}
+			db.Copy().DB(database).C("answer").Find(bson.M{"answerText": answerString}).One(&actual)
+
+			Expect(actual.Meta["username"]).To(Equal("ironman"))
+			Expect(actual.Meta["name"]).To(HaveKey("firstName"))
+			Expect(actual.Meta["name"]).To(HaveKey("lastName"))
+			Expect(actual.Meta["name"].(map[string]interface{})["firstName"]).To(Equal("Tony"))
+			Expect(actual.Meta["name"].(map[string]interface{})["lastName"]).To(Equal("Stark"))
+
+			actualC := comment{}
+
+			time.Sleep(10 * time.Millisecond)
+			db.Copy().DB(database).C("comment").Find(bson.M{"text": "this is my first comment"}).One(&actualC)
+
+			Expect(actualC.Meta["username"]).To(Equal("ironman"))
+			Expect(actualC.Meta["gender"]).To(Equal("male"))
+		})
+
+		It("will work with upserts on the user as well", func() {
+			cl, err := db.DB(database).C("user").Upsert(
+				bson.M{
+					"username": "ironman",
+				},
+				bson.M{
+					"$set": bson.M{
+						"username": "blackwidow",
+						"gender":   "female",
+						"name": bson.M{
+							"firstName": "Natasha",
+							"lastName":  "Romanoff",
+						},
+					},
+				},
+			)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cl.Updated).To(Equal(1))
+
+			time.Sleep(10 * time.Millisecond)
+			actual := answer{}
+			db.Copy().DB(database).C("answer").Find(bson.M{"answerText": answerString}).One(&actual)
+
+			Expect(actual.Meta["username"]).To(Equal("blackwidow"))
+			Expect(actual.Meta["name"]).To(HaveKey("firstName"))
+			Expect(actual.Meta["name"]).To(HaveKey("lastName"))
+			Expect(actual.Meta["name"].(map[string]interface{})["firstName"]).To(Equal("Natasha"))
+			Expect(actual.Meta["name"].(map[string]interface{})["lastName"]).To(Equal("Romanoff"))
+
+			actualC := comment{}
+
+			time.Sleep(10 * time.Millisecond)
+			db.Copy().DB(database).C("comment").Find(bson.M{"text": "this is my first comment"}).One(&actualC)
+
+			Expect(actualC.Meta["username"]).To(Equal("blackwidow"))
+			Expect(actualC.Meta["gender"]).To(Equal("female"))
+		})
+
+		It("will also update multiple comments for multiple user updates", func() {
+			err := db.DB(database).C("user").Insert(
+				bson.M{
+					"_id":      userTwoRef.Id,
+					"username": "hawkeye",
+					"gender":   "male",
+					"name": bson.M{
+						"firstName": "Clinton Francis",
+						"lastName":  "Barton",
+					},
+				},
+			)
+
+			answerString = "I am hawkeye"
+
+			db.DB(database).C("answer").Insert(&answer{AnswerText: answerString, User: userTwoRef})
+			time.Sleep(10 * time.Millisecond)
+			actual := answer{}
+			db.Copy().DB(database).C("answer").Find(bson.M{"answerText": answerString}).One(&actual)
+
+			Expect(actual.Meta["username"]).To(Equal("hawkeye"))
+			Expect(actual.Meta["name"]).To(HaveKey("firstName"))
+			Expect(actual.Meta["name"]).To(HaveKey("lastName"))
+			Expect(actual.Meta["name"].(map[string]interface{})["firstName"]).To(Equal("Clinton Francis"))
+			Expect(actual.Meta["name"].(map[string]interface{})["lastName"]).To(Equal("Barton"))
+			Expect(err).ToNot(HaveOccurred())
+
+			db.DB(database).C("comment").Insert(
+				bson.M{
+					"text": "hawkeye comment",
+					"user": userTwoRef,
+				},
+			)
+
+			actualComment := comment{}
+			time.Sleep(10 * time.Millisecond)
+			db.Copy().DB(database).C("comment").Find(bson.M{"text": "hawkeye comment"}).One(&actualComment)
+
+			Expect(actualComment.Meta["username"]).To(Equal("hawkeye"))
+			Expect(actualComment.Meta["gender"]).To(Equal("male"))
+
+			cl, err := db.Copy().DB(database).C("user").UpdateAll(
+				bson.M{},
+				bson.M{
+					"$set": bson.M{
+						"gender": "confidential",
+					},
+				})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cl.Updated).To(BeNumerically(">", 1))
+			time.Sleep(30 * time.Millisecond)
+
+			iter := db.Copy().DB(database).C("comment").Find(bson.M{"meta": bson.M{"$exists": true}}).Iter()
+
+			for iter.Next(&actualComment) {
+				Expect(actualComment.Meta["gender"]).To(Equal("confidential"))
+			}
 		})
 	})
 

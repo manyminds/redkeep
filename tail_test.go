@@ -162,6 +162,38 @@ var _ = Describe("Tail", func() {
 			Expect(c.Meta).To(BeEmpty())
 		})
 
+		It("Should update nothing with invalid fields", func() {
+			userRef := mgo.DBRef{
+				Database:   database,
+				Id:         bson.NewObjectId(),
+				Collection: "user",
+			}
+			db.DB(database).C("user").Insert(
+				bson.M{
+					"_id":      userRef.Id,
+					"nickname": "captain america",
+					"contact": bson.M{
+						"firstName": "Steve",
+						"lastName":  "Rogers",
+					},
+				},
+			)
+
+			db.DB(database).C("comment").Insert(
+				bson.M{
+					"text": "i am captain of a warmonger",
+					"user": userRef.Id,
+				},
+			)
+
+			c := comment{}
+			time.Sleep(10 * time.Millisecond)
+			db.Copy().DB(database).C("comment").Find(bson.M{"text": "i am captain of a warmonger"}).One(&c)
+
+			Expect(c.Text).To(Equal("i am captain of a warmonger"))
+			Expect(c.Meta).To(BeEmpty())
+		})
+
 		It("Should update infos on insert correctly", func() {
 			db.DB(database).C("user").Insert(
 				bson.M{

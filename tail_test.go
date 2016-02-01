@@ -203,14 +203,17 @@ var _ = Describe("Tail", func() {
 				},
 			)
 
-			db.DB(database).C("comment").UpdateAll(
+			_, err := db.DB(database).C("comment").UpdateAll(
 				bson.M{
-					"user.$id": userOneRef.Id,
+					"user": userOneRef,
 				},
 				bson.M{
-					"user": userThreeRef,
+					"$set": bson.M{
+						"user": userThreeRef,
+					},
 				},
 			)
+			Expect(err).ToNot(HaveOccurred())
 
 			actual := comment{}
 			time.Sleep(10 * time.Millisecond)
@@ -218,6 +221,18 @@ var _ = Describe("Tail", func() {
 
 			Expect(actual.Meta["username"]).To(Equal("songoku"))
 			Expect(actual.Meta["gender"]).To(Equal("male"))
+			_, err = db.DB(database).C("comment").UpdateAll(
+				bson.M{
+					"user": userThreeRef,
+				},
+				bson.M{
+					"$set": bson.M{
+						"user": userOneRef,
+					},
+				},
+			)
+			Expect(err).ToNot(HaveOccurred())
+
 		})
 
 		It("will also work with answers and different mapping", func() {
@@ -410,6 +425,11 @@ var _ = Describe("Tail", func() {
 				},
 				"author": testReference,
 				"tree":   nil,
+				"$set": map[string]interface{}{
+					"user": map[string]interface{}{
+						"$id": "id",
+					},
+				},
 			}
 
 			actual := GetValue("fish.dog", toTest)
@@ -417,6 +437,9 @@ var _ = Describe("Tail", func() {
 
 			actual = GetValue("invalid", toTest)
 			Expect(actual).To(BeNil())
+
+			actual = GetValue("$set.user", toTest)
+			Expect(map[string]interface{}{"$id": "id"}).To(Equal(actual))
 
 			actual = GetValue("tree", toTest)
 			Expect(actual).To(BeNil())

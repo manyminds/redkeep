@@ -68,6 +68,16 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 					t.tracker.HandleInsert(w, command, triggerRef)
 				}
 			case "u":
+				if w.TargetCollection == namespace {
+					triggerRef := mgo.DBRef{
+						Collection: triggerCollection,
+						Database:   triggerDB,
+						Id:         dataset["o2"].(map[string]interface{})["_id"].(bson.ObjectId),
+					}
+
+					t.tracker.HandleInsert(w, command, triggerRef)
+				}
+
 				if w.TrackCollection == namespace {
 					if selector, ok := dataset["o2"].(map[string]interface{}); ok {
 						t.tracker.HandleUpdate(w, command, selector)

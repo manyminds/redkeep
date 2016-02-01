@@ -9,19 +9,35 @@ import (
 )
 
 //Tracker handles changes in the oplog
+//it is a combination of CRUD Tracker
+//Remove/Update/Create/Delete
+//
 type Tracker interface {
-	HandleUpdate(
-		w Watch,
-		command map[string]interface{},
-		selector map[string]interface{},
-	)
+	RemoveTracker
+	UpdateTracker
+	InsertTracker
+}
 
+//RemoveTracker can handle removes
+type RemoveTracker interface {
 	HandleRemove(
 		w Watch,
 		command map[string]interface{},
 		selector map[string]interface{},
 	)
+}
 
+//UpdateTracker can handle updates
+type UpdateTracker interface {
+	HandleUpdate(
+		w Watch,
+		command map[string]interface{},
+		selector map[string]interface{},
+	)
+}
+
+//InsertTracker can handle inserts
+type InsertTracker interface {
 	HandleInsert(
 		w Watch,
 		command map[string]interface{},

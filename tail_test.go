@@ -235,6 +235,7 @@ var _ = Describe("Tail", func() {
 				},
 			)
 
+<<<<<<< a73736505d8cf78f82c0ca0ac6e3c2f5ff8128c5
 			_, err := db.DB(database).C("comment").UpdateAll(
 				bson.M{
 					"user": userOneRef,
@@ -246,7 +247,6 @@ var _ = Describe("Tail", func() {
 				},
 			)
 			Expect(err).ToNot(HaveOccurred())
-
 			actual := comment{}
 			time.Sleep(10 * time.Millisecond)
 			db.Copy().DB(database).C("comment").Find(bson.M{"text": "this is my first comment"}).One(&actual)
@@ -264,7 +264,6 @@ var _ = Describe("Tail", func() {
 				},
 			)
 			Expect(err).ToNot(HaveOccurred())
-
 		})
 
 		It("will also work with answers and different mapping", func() {

@@ -68,6 +68,10 @@ func (c changeTracker) HandleRemove(w Watch, command map[string]interface{}, sel
 func (c changeTracker) HandleInsert(w Watch, command map[string]interface{}, originRef mgo.DBRef) {
 	reference := GetValue(w.TriggerReference, command)
 	if reference == nil {
+		reference = GetValue("$set."+w.TriggerReference, command)
+	}
+
+	if reference == nil {
 		return
 	}
 
@@ -85,18 +89,21 @@ func (c changeTracker) HandleInsert(w Watch, command map[string]interface{}, ori
 	err := collection.FindId(ref.Id).One(&user)
 
 	if err != nil {
+		log.Println("User not found for update")
 		return
 	}
 
 	query := BuildInsertQuery(w, user)
 	if query == nil {
+		log.Println("Empty query, need an update")
 		return
 	}
 
 	collection = session.DB(originRef.Database).C(originRef.Collection)
-	err = collection.Update(bson.M{"_id": originRef.Id}, query)
+	err = collection.Update(bson.M{"_id": originRef.Id.(bson.ObjectId)}, query)
 	if err != nil {
-		log.Println("Query could not be executed successfully.")
+		log.Println("Query could not be executed successfully." + err.Error())
+		return
 	}
 
 	log.Println("Executing Query: ", bson.M{"_id": originRef.Id}, query)

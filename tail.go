@@ -65,18 +65,28 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 			switch operationType {
 			case "i":
 				if w.TargetCollection == namespace {
-					go t.tracker.HandleInsert(w, command, triggerRef)
+					t.tracker.HandleInsert(w, command, triggerRef)
 				}
 			case "u":
+				if w.TargetCollection == namespace {
+					triggerRef := mgo.DBRef{
+						Collection: triggerCollection,
+						Database:   triggerDB,
+						Id:         dataset["o2"].(map[string]interface{})["_id"].(bson.ObjectId),
+					}
+
+					t.tracker.HandleInsert(w, command, triggerRef)
+				}
+
 				if w.TrackCollection == namespace {
 					if selector, ok := dataset["o2"].(map[string]interface{}); ok {
-						go t.tracker.HandleUpdate(w, command, selector)
+						t.tracker.HandleUpdate(w, command, selector)
 					}
 				}
 			case "d":
 				if w.TrackCollection == namespace {
 					if selector, ok := dataset["o2"].(map[string]interface{}); ok {
-						go t.tracker.HandleRemove(w, command, selector)
+						t.tracker.HandleRemove(w, command, selector)
 					}
 				}
 			case "c":

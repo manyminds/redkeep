@@ -1,5 +1,7 @@
 # Red Keep 
 [![Build Status](https://travis-ci.org/manyminds/redkeep.svg?branch=master)](https://travis-ci.org/manyminds/redkeep)
+[![Coverage Status](https://coveralls.io/repos/github/manyminds/redkeep/badge.svg?branch=master)](https://coveralls.io/github/manyminds/redkeep?branch=master)
+
 ## A MongoDB redundancy keeper.
 
 This project automatically tracks changes and adds redundant fields on references.

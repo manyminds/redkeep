@@ -17,6 +17,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const sleepDuration = 50 * time.Millisecond
+
 var testConfigurationTemplate = `{
   "mongo": { 
     "connectionURI": "localhost:30000,localhost:30001,localhost:30002"
@@ -54,8 +56,6 @@ var testConfigurationTemplate = `{
     }
   ]
 }`
-
-const sleepDuration = 50 * time.Millisecond
 
 var _ = Describe("Tail", func() {
 	var (
@@ -96,70 +96,6 @@ var _ = Describe("Tail", func() {
 
 	AfterSuite(func() {
 		running <- false
-	})
-
-	Context("Bulk testcases", func() {
-		var (
-			db *mgo.Session
-		)
-
-		type item struct {
-			ID    bson.ObjectId `bson:"_id,omitempty"`
-			Name  string
-			Price float64
-		}
-
-		type order struct {
-			Item        mgo.DBRef
-			Name        string
-			Information map[string]interface{}
-		}
-
-		BeforeEach(func() {
-			var err error
-			db, err = mgo.Dial("localhost:30000,localhost:30001,localhost:30002")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("will work with bulk inserts", func() {
-			connection := db.Copy()
-			connection.SetBatch(100)
-			connection.SetMode(mgo.Strong, true)
-			collection := connection.DB(database).C("item")
-			pipeline := collection.Bulk()
-			pipeline.Unordered()
-			ids := make([]bson.ObjectId, 1000)
-			for i := 0; i < 1000; i++ {
-				ids[i] = bson.NewObjectId()
-				pipeline.Insert(item{
-					ID:    ids[i],
-					Name:  fmt.Sprintf("Item #%d", i),
-					Price: float64(i) * 2.3},
-				)
-			}
-
-			_, err := pipeline.Run()
-			Expect(err).ToNot(HaveOccurred())
-			time.Sleep(sleepDuration)
-
-			pipeline = connection.DB(database).C("order").Bulk()
-			pipeline.Unordered()
-
-			var itemRef mgo.DBRef
-			for i, id := range ids {
-				itemRef = mgo.DBRef{
-					Database:   database,
-					Id:         id,
-					Collection: "item",
-				}
-
-				pipeline.Insert(order{Name: fmt.Sprintf("Order #%d", i), Item: itemRef})
-			}
-
-			_, err = pipeline.Run()
-			Expect(err).ToNot(HaveOccurred())
-			time.Sleep(3 * sleepDuration)
-		})
 	})
 
 	Context("Database testcases", func() {
@@ -311,7 +247,6 @@ var _ = Describe("Tail", func() {
 				},
 			)
 
-<<<<<<< a73736505d8cf78f82c0ca0ac6e3c2f5ff8128c5
 			_, err := db.DB(database).C("comment").UpdateAll(
 				bson.M{
 					"user": userOneRef,
@@ -324,7 +259,7 @@ var _ = Describe("Tail", func() {
 			)
 			Expect(err).ToNot(HaveOccurred())
 			actual := comment{}
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(sleepDuration)
 			db.Copy().DB(database).C("comment").Find(bson.M{"text": "this is my first comment"}).One(&actual)
 
 			Expect(actual.Meta["username"]).To(Equal("songoku"))
@@ -507,7 +442,7 @@ var _ = Describe("Tail", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(cl.Updated).To(BeNumerically(">", 1))
-			time.Sleep(sleepDuration)
+			time.Sleep(2 * sleepDuration)
 
 			iter := db.Copy().DB(database).C("comment").Find(bson.M{"meta": bson.M{"$exists": true}}).Iter()
 
@@ -557,6 +492,75 @@ var _ = Describe("Tail", func() {
 
 			actual = GetValue("fish", toTest)
 			Expect(actual).To(Equal(map[string]interface{}{"dog": "cat"}))
+		})
+	})
+	Context("Bulk testcases", func() {
+		var (
+			db *mgo.Session
+		)
+
+		type item struct {
+			ID    bson.ObjectId `bson:"_id,omitempty"`
+			Name  string
+			Price float64
+		}
+
+		type order struct {
+			Item        mgo.DBRef
+			Name        string
+			Information map[string]interface{}
+		}
+
+		BeforeEach(func() {
+			var err error
+			db, err = mgo.Dial("localhost:30000,localhost:30001,localhost:30002")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("will work with bulk inserts", func() {
+			connection := db.Copy()
+			connection.SetBatch(100)
+			connection.SetMode(mgo.Strong, true)
+			collection := connection.DB(database).C("item")
+			pipeline := collection.Bulk()
+			pipeline.Unordered()
+			ids := make([]bson.ObjectId, 1000)
+			for i := 0; i < 1000; i++ {
+				ids[i] = bson.NewObjectId()
+				pipeline.Insert(item{
+					ID:    ids[i],
+					Name:  fmt.Sprintf("Item #%d", i),
+					Price: float64(i) * 2.3},
+				)
+			}
+
+			_, err := pipeline.Run()
+			Expect(err).ToNot(HaveOccurred())
+			time.Sleep(sleepDuration)
+
+			pipeline = connection.DB(database).C("order").Bulk()
+			pipeline.Unordered()
+
+			var itemRef mgo.DBRef
+			for i, id := range ids {
+				itemRef = mgo.DBRef{
+					Database:   database,
+					Id:         id,
+					Collection: "item",
+				}
+
+				pipeline.Insert(order{Name: fmt.Sprintf("Order #%d", i), Item: itemRef})
+			}
+
+			_, err = pipeline.Run()
+			Expect(err).ToNot(HaveOccurred())
+			time.Sleep(40 * sleepDuration) // 1000 single updates take long time :-( 2s to be safe on travis
+
+			n, err := db.Copy().DB(database).C("order").Find(
+				bson.M{"information.price": bson.M{"$exists": true}},
+			).Count()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1000))
 		})
 	})
 })

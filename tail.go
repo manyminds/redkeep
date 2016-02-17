@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -22,6 +23,51 @@ type TailAgent struct {
 	startTime time.Time
 }
 
+//Query represents a mongodb oplog query
+type Query interface {
+	DB() string
+	C() string
+	OP() string
+}
+
+type oplogQuery struct {
+	dataset        map[string]interface{}
+	db, collection string
+}
+
+func (o oplogQuery) C() string {
+	return o.collection
+}
+func (o oplogQuery) DB() string {
+	return o.db
+}
+
+func (o oplogQuery) OP() string {
+	if s, ok := o.dataset["op"].(string); ok {
+		return s
+	}
+
+	return ""
+}
+
+//NewOplogQuery generates a new query object from the given dataset
+func NewOplogQuery(dataset map[string]interface{}) (Query, error) {
+	namespace, ok := dataset["ns"].(string)
+	if namespace == "" || !ok {
+		return nil, errors.New("namespace not given")
+	}
+
+	p := strings.Index(namespace, ".")
+	if p == -1 {
+		return nil, errors.New("Invalid namespace given, must contain dot")
+	}
+
+	triggerDB := namespace[:p]
+	triggerCollection := namespace[p+1:]
+
+	return oplogQuery{dataset: dataset, db: triggerDB, collection: triggerCollection}, nil
+}
+
 //mongoTimestamp has the capability to cast to a mongo timestamp
 type mongoTimestamp struct {
 	time.Time
@@ -37,21 +83,22 @@ func (m mongoTimestamp) MongoTimestamp() bson.MongoTimestamp {
 	return bson.MongoTimestamp(result)
 }
 
-func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
-	namespace, ok := dataset["ns"].(string)
-	if namespace == "" || !ok {
+func analyzeResult(dataset map[string]interface{}, w []Watch, s *mgo.Session) {
+	query, err := NewOplogQuery(dataset)
+	if err != nil {
+		log.Println(err)
 		return
 	}
 
-	p := strings.Index(namespace, ".")
-	if p == -1 {
-		return
-	}
+	session := s.Copy()
+	defer session.Close()
 
-	watches := t.config.Watches
-	triggerDB := namespace[:p]
-	triggerCollection := namespace[p+1:]
-	operationType := dataset["op"]
+	t := NewChangeTracker(session)
+	watches := w
+	triggerDB := query.DB()
+	triggerCollection := query.C()
+	operationType := query.OP()
+	namespace := fmt.Sprintf("%s.%s", triggerDB, triggerCollection)
 
 	if command, ok := dataset["o"].(map[string]interface{}); ok {
 		triggerID, _ := command["_id"].(bson.ObjectId)
@@ -65,7 +112,7 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 			switch operationType {
 			case "i":
 				if w.TargetCollection == namespace {
-					t.tracker.HandleInsert(w, command, triggerRef)
+					t.HandleInsert(w, command, triggerRef)
 				}
 			case "u":
 				if w.TargetCollection == namespace {
@@ -75,18 +122,18 @@ func (t TailAgent) analyzeResult(dataset map[string]interface{}) {
 						Id:         dataset["o2"].(map[string]interface{})["_id"].(bson.ObjectId),
 					}
 
-					t.tracker.HandleInsert(w, command, triggerRef)
+					t.HandleInsert(w, command, triggerRef)
 				}
 
 				if w.TrackCollection == namespace {
 					if selector, ok := dataset["o2"].(map[string]interface{}); ok {
-						t.tracker.HandleUpdate(w, command, selector)
+						t.HandleUpdate(w, command, selector)
 					}
 				}
 			case "d":
 				if w.TrackCollection == namespace {
 					if selector, ok := dataset["o2"].(map[string]interface{}); ok {
-						t.tracker.HandleRemove(w, command, selector)
+						t.HandleRemove(w, command, selector)
 					}
 				}
 			case "c":
@@ -133,6 +180,7 @@ func (t TailAgent) Tail(quit chan bool, forceRescan bool) error {
 	query := oplogCollection.Find(bson.M{"ts": bson.M{"$gt": startTime.MongoTimestamp()}})
 	iter := query.LogReplay().Sort("$natural").Tail(requeryDuration)
 
+	sessionCopy := session.Copy()
 	var lastTimestamp bson.MongoTimestamp
 	for {
 		select {
@@ -146,7 +194,15 @@ func (t TailAgent) Tail(quit chan bool, forceRescan bool) error {
 
 		for iter.Next(&result) {
 			lastTimestamp = result["ts"].(bson.MongoTimestamp)
-			t.analyzeResult(result)
+
+			// in order to avoid a race condition, each routine needs
+			// copies from everything.
+			copyResult := make(map[string]interface{})
+			for k, v := range result {
+				copyResult[k] = v
+			}
+
+			go analyzeResult(copyResult, t.config.Watches[:], sessionCopy)
 		}
 
 		if iter.Err() != nil {

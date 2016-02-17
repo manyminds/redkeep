@@ -73,8 +73,6 @@ func (c changeTracker) HandleUpdate(w Watch, command map[string]interface{}, sel
 	if err != nil {
 		log.Println("Query could not be executed successfully.")
 	}
-
-	log.Println("Executing Query: ", bson.M{w.TriggerReference + ".$id": refID}, updateQuery)
 }
 
 func (c changeTracker) HandleRemove(w Watch, command map[string]interface{}, selector map[string]interface{}) {
@@ -121,8 +119,6 @@ func (c changeTracker) HandleInsert(w Watch, command map[string]interface{}, ori
 		log.Println("Query could not be executed successfully." + err.Error())
 		return
 	}
-
-	log.Println("Executing Query: ", bson.M{"_id": originRef.Id}, query)
 }
 
 //NewChangeTracker is the default tracker implementation of redkeep

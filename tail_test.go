@@ -554,7 +554,7 @@ var _ = Describe("Tail", func() {
 
 			_, err = pipeline.Run()
 			Expect(err).ToNot(HaveOccurred())
-			time.Sleep(40 * sleepDuration) // 1000 single updates take long time :-( 2s to be safe on travis
+			time.Sleep(50 * sleepDuration) // 1000 single updates take long time :-( 2s to be safe on travis
 
 			n, err := db.Copy().DB(database).C("order").Find(
 				bson.M{"information.price": bson.M{"$exists": true}},

@@ -17,6 +17,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const sleepDuration = 50 * time.Millisecond
+
 var testConfigurationTemplate = `{
   "mongo": { 
     "connectionURI": "localhost:30000,localhost:30001,localhost:30002"
@@ -33,6 +35,16 @@ var testConfigurationTemplate = `{
       }
     },
     {
+      "trackCollection": "{{.Database}}.item",
+      "trackFields": ["name", "price"], 
+      "targetCollection": "{{.Database}}.order",
+      "targetNormalizedField": "information",
+      "triggerReference": "item",
+      "behaviourSettings": {
+        "cascadeDelete": false
+      }
+    },
+{
       "trackCollection": "{{.Database}}.user",
       "trackFields": ["name", "username"], 
       "targetCollection": "{{.Database}}.answer",
@@ -155,6 +167,38 @@ var _ = Describe("Tail", func() {
 			)
 
 			c := comment{}
+			time.Sleep(sleepDuration)
+			db.Copy().DB(database).C("comment").Find(bson.M{"text": "i am captain of a warmonger"}).One(&c)
+
+			Expect(c.Text).To(Equal("i am captain of a warmonger"))
+			Expect(c.Meta).To(BeEmpty())
+		})
+
+		It("Should update nothing with invalid fields", func() {
+			userRef := mgo.DBRef{
+				Database:   database,
+				Id:         bson.NewObjectId(),
+				Collection: "user",
+			}
+			db.DB(database).C("user").Insert(
+				bson.M{
+					"_id":      userRef.Id,
+					"nickname": "captain america",
+					"contact": bson.M{
+						"firstName": "Steve",
+						"lastName":  "Rogers",
+					},
+				},
+			)
+
+			db.DB(database).C("comment").Insert(
+				bson.M{
+					"text": "i am captain of a warmonger",
+					"user": userRef.Id,
+				},
+			)
+
+			c := comment{}
 			time.Sleep(10 * time.Millisecond)
 			db.Copy().DB(database).C("comment").Find(bson.M{"text": "i am captain of a warmonger"}).One(&c)
 
@@ -183,7 +227,7 @@ var _ = Describe("Tail", func() {
 			)
 
 			actual := comment{}
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(sleepDuration)
 			db.Copy().DB(database).C("comment").Find(bson.M{"text": "this is my first comment"}).One(&actual)
 
 			Expect(actual.Meta["username"]).To(Equal("naan"))
@@ -214,9 +258,8 @@ var _ = Describe("Tail", func() {
 				},
 			)
 			Expect(err).ToNot(HaveOccurred())
-
 			actual := comment{}
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(sleepDuration)
 			db.Copy().DB(database).C("comment").Find(bson.M{"text": "this is my first comment"}).One(&actual)
 
 			Expect(actual.Meta["username"]).To(Equal("songoku"))
@@ -232,14 +275,13 @@ var _ = Describe("Tail", func() {
 				},
 			)
 			Expect(err).ToNot(HaveOccurred())
-
 		})
 
 		It("will also work with answers and different mapping", func() {
 			db.DB(database).C("answer").Insert(&answer{AnswerText: answerString, User: userOneRef})
 
 			actual := answer{}
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(sleepDuration)
 			db.Copy().DB(database).C("answer").Find(bson.M{"answerText": answerString}).One(&actual)
 
 			Expect(actual.Meta["username"]).To(Equal("naan"))
@@ -264,7 +306,7 @@ var _ = Describe("Tail", func() {
 			)
 
 			Expect(err).ToNot(HaveOccurred())
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(sleepDuration)
 			actual := answer{}
 			db.Copy().DB(database).C("answer").Find(bson.M{"answerText": answerString}).One(&actual)
 
@@ -293,7 +335,7 @@ var _ = Describe("Tail", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(cl.Updated).To(Equal(1))
 
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(sleepDuration)
 			actual := answer{}
 			db.Copy().DB(database).C("answer").Find(bson.M{"answerText": answerString}).One(&actual)
 
@@ -305,9 +347,8 @@ var _ = Describe("Tail", func() {
 
 			actualC := comment{}
 
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(sleepDuration)
 			db.Copy().DB(database).C("comment").Find(bson.M{"text": "this is my first comment"}).One(&actualC)
-
 			Expect(actualC.Meta["username"]).To(Equal("ironman"))
 			Expect(actualC.Meta["gender"]).To(Equal("male"))
 		})
@@ -332,7 +373,7 @@ var _ = Describe("Tail", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(cl.Updated).To(Equal(1))
 
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(sleepDuration)
 			actual := answer{}
 			db.Copy().DB(database).C("answer").Find(bson.M{"answerText": answerString}).One(&actual)
 
@@ -344,9 +385,8 @@ var _ = Describe("Tail", func() {
 
 			actualC := comment{}
 
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(sleepDuration)
 			db.Copy().DB(database).C("comment").Find(bson.M{"text": "this is my first comment"}).One(&actualC)
-
 			Expect(actualC.Meta["username"]).To(Equal("blackwidow"))
 			Expect(actualC.Meta["gender"]).To(Equal("female"))
 		})
@@ -367,7 +407,7 @@ var _ = Describe("Tail", func() {
 			answerString = "I am hawkeye"
 
 			db.DB(database).C("answer").Insert(&answer{AnswerText: answerString, User: userTwoRef})
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(sleepDuration)
 			actual := answer{}
 			db.Copy().DB(database).C("answer").Find(bson.M{"answerText": answerString}).One(&actual)
 
@@ -386,7 +426,7 @@ var _ = Describe("Tail", func() {
 			)
 
 			actualComment := comment{}
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(sleepDuration)
 			db.Copy().DB(database).C("comment").Find(bson.M{"text": "hawkeye comment"}).One(&actualComment)
 
 			Expect(actualComment.Meta["username"]).To(Equal("hawkeye"))
@@ -402,7 +442,7 @@ var _ = Describe("Tail", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(cl.Updated).To(BeNumerically(">", 1))
-			time.Sleep(30 * time.Millisecond)
+			time.Sleep(2 * sleepDuration)
 
 			iter := db.Copy().DB(database).C("comment").Find(bson.M{"meta": bson.M{"$exists": true}}).Iter()
 
@@ -452,6 +492,75 @@ var _ = Describe("Tail", func() {
 
 			actual = GetValue("fish", toTest)
 			Expect(actual).To(Equal(map[string]interface{}{"dog": "cat"}))
+		})
+	})
+	Context("Bulk testcases", func() {
+		var (
+			db *mgo.Session
+		)
+
+		type item struct {
+			ID    bson.ObjectId `bson:"_id,omitempty"`
+			Name  string
+			Price float64
+		}
+
+		type order struct {
+			Item        mgo.DBRef
+			Name        string
+			Information map[string]interface{}
+		}
+
+		BeforeEach(func() {
+			var err error
+			db, err = mgo.Dial("localhost:30000,localhost:30001,localhost:30002")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("will work with bulk inserts", func() {
+			connection := db.Copy()
+			connection.SetBatch(100)
+			connection.SetMode(mgo.Strong, true)
+			collection := connection.DB(database).C("item")
+			pipeline := collection.Bulk()
+			pipeline.Unordered()
+			ids := make([]bson.ObjectId, 1000)
+			for i := 0; i < 1000; i++ {
+				ids[i] = bson.NewObjectId()
+				pipeline.Insert(item{
+					ID:    ids[i],
+					Name:  fmt.Sprintf("Item #%d", i),
+					Price: float64(i) * 2.3},
+				)
+			}
+
+			_, err := pipeline.Run()
+			Expect(err).ToNot(HaveOccurred())
+			time.Sleep(sleepDuration)
+
+			pipeline = connection.DB(database).C("order").Bulk()
+			pipeline.Unordered()
+
+			var itemRef mgo.DBRef
+			for i, id := range ids {
+				itemRef = mgo.DBRef{
+					Database:   database,
+					Id:         id,
+					Collection: "item",
+				}
+
+				pipeline.Insert(order{Name: fmt.Sprintf("Order #%d", i), Item: itemRef})
+			}
+
+			_, err = pipeline.Run()
+			Expect(err).ToNot(HaveOccurred())
+			time.Sleep(50 * sleepDuration) // 1000 single updates take long time :-( 2s to be safe on travis
+
+			n, err := db.Copy().DB(database).C("order").Find(
+				bson.M{"information.price": bson.M{"$exists": true}},
+			).Count()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1000))
 		})
 	})
 })

@@ -234,6 +234,7 @@ func (t *TailAgent) connect() error {
 	t.session = session
 	t.tracker = NewChangeTracker(t.session)
 
+	log.Println("Connected.")
 	return nil
 }
 

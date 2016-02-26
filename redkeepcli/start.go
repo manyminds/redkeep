@@ -31,6 +31,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	log.Println("Agent started.")
 	agent.Tail(running, *rescan)
 	running <- false
 }
